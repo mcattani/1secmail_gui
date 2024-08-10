@@ -1,0 +1,243 @@
+' Gambas class file
+
+'Genera una dirección de correo electrónico temporal para recibir mails (utiliza la API de: https://www.1secmail.com/api/)
+'The Nerdy Apprentice
+'Visita https://thenerdyapprentice.blogspot.com/ para más información y dejar un comentario XD
+'Los íconos utilizados en este programa fueron descargdos de: https://www.iconpacks.net/
+
+Public Usuario As String 
+Public Domain As String
+Private res As String
+Private mail_key As String
+
+
+Public Sub Form_Open()
+  
+  Me.Text = "1secMail - GUI" & " v" & Application.Version
+  
+  ConfigGridDatosMail() 'Función para configurar el grid donde se muestran los datos de los mails recibidos
+
+  mail.GetDomains() 'Obtenemos los dominios disponibles
+  
+  btnRandom_Click() 'Llamamos al evento click del botón random para obtener un usuario random
+  
+  expHtml.Enabled = False 'Ocultamos por defecto el panel HTML hasta que sea seleccinado un mail
+  
+End
+
+Public Sub ConfigGridDatosMail() 'Función para configurar el ColumnView
+  ' id: Message id --- From: Sender email address --- subject: Subject --- Date: Receive Date
+  
+  With colDatosMail
+    .Columns.Count = 4
+    .Columns[0].Width = 80
+    .Columns[0].Text = "ID"
+    .Columns[0].Alignment = Align.Center
+    .Columns[1].Width = 100
+    .Columns[1].Text = "Fecha"
+    .Columns[1].Alignment = Align.Center
+    .Columns[2].Width = 150
+    .Columns[2].Text = "De"
+    .Columns[2].Alignment = Align.Center  
+    .Columns[3].Width = 250
+    .Columns[3].Text = "Asunto"
+    .Columns[3].Alignment = Align.Center
+  End With
+  
+End
+
+Public Sub MostrarDatosMails()
+  
+  Dim id As Integer 
+  
+  If mail.datosMail["id"] = Null Then
+    Return 
+  Endif
+  
+  id = mail.datosMail["id"]
+   
+  If colDatosMail.Exist(id) Then Return 'Para evitar la repetición del ID
+  
+  'Llamamos a la función para reproducir sonido indicando que tnenemos un nuevo mensaje
+  'Llamándola desde acá evitamos que suene constantemente -> 1 vez por mensaje
+  Rep_Sound() 
+  
+  expHtml.Enabled = True 'Habilitamos el contenedor para la versión HTML
+  
+  'Agregamos los datos guadados en la colección del módulo 'mail' al ColumnView
+  colDatosMail.Add(mail.datosMail["id"], mail.datosMail["id"])
+  colDatosMail[id][1] = mail.datosMail["date"]
+  colDatosMail[id][2] = mail.datosMail["from"]
+  colDatosMail[id][3] = mail.datosMail["subject"]
+  
+  StatusBar("Ha llegado un mail de " & mail.datosMail["from"])
+  
+  'Ej:
+  'colDatosMail.Add("key", "1895")
+  'colDatosMail["key"][1] = "10/03/2024"
+  'colDatosMail["key"][2] = "blabla@gmail.com"
+  'colDatosMail["key"][3] = "Mail de confirmación para bla bla blabla bla bla"
+
+End
+
+Public Sub mailTimer_Timer()
+  
+  res = mail.getMails(usuario, domain) 'Llamamos a la función para chequear si llegó un mail
+  
+  If res = "[]" Then
+    'Print "Sin respuesta."
+    Return 
+  Else 
+    'Print res
+    MostrarDatosMails()
+  Endif
+  
+End
+
+Public Sub StatusBar(mensaje As String) 'Función para manejar la barra de estado 
+  
+  txStatusBar.Text = " " & mensaje
+  
+End
+
+Public Sub btnChequearMail_Click()
+  
+  Dim usrProhibidos As String[] = ["abuse", "webmaster", "contact", "postmaster", "hostmaster", "admin"]
+  Dim I As Integer
+  
+  'Chequeamos que se haya introducido un usuario
+  If txUser.Text = "" Then 
+    Message.Warning("Debe introducir un nombre para el mail!")
+    Return 
+  Endif
+  
+  'Chequemos que el nombre de usuario no esté en la lista de usuarios no permitidos (esto está definido en el sitio)
+  For I = 0 To usrProhibidos.Count - 1
+    If txUser.Text = usrProhibidos[i] Then 
+      Message.Warning("No puede utilizar este nombre de usuario")
+    Endif
+  Next
+  
+  Usuario = Trim(txUser.Text) 'Trim para quitar espacios antes o después del nombre de usuario
+  Domain = cmbDominios.Text
+  
+  txMail.Text = Trim(usuario & "@" & domain) 'Mostramos el mail elegido)
+  
+  ' Iniciamos el spinner y el timer 
+  spRecibir.Visible = True
+  spRecibir.Start
+  mailTimer.Start
+  
+  StatusBar("A la espera de recibir mails a " & txMail.Text)
+  
+  btnDetener.Enabled = True 'Habilitamos el botón para detener el servicio
+  
+End
+
+Public Sub colDatosMail_Click()
+  
+  'Print colDatosMail.Current.Key
+  mail.getMail(Usuario, Domain, colDatosMail.Current.Key)
+  mail_key = colDatosMail.Current.Key
+  StatusBar("Mostrando mail id -> " & colDatosMail.Current.key)
+  
+End
+
+Public Sub btnRandom_Click() ' Creamos nombre random utilizando alguna de las 30 palabras al azar y cuatro dígitos
+  
+  Dim nombres As String[] = ["sunnystorm", "silverflower", "blueneedle", "orangefire", "greenpotato", "cleverfox", "magicwilder", "wildtiger", 
+    "laughingpidgeon", "secretbooster", "oceanblaster", "goldenbaloon", "stargalactic", "sleepywisdom", "mistyvalley", "happykingdom", "shininghenry", 
+    "stormynormy", "braveoldworld", "wiseowl", "mystictruck", "crimsonmomoa", "echofox", "flyingdog", "thunderwriter", "silentapprentice", "ambersiren", "goldenharvest", "swiftdragon", "silentriver", "cryingwombat", "numbdove", "wisewombat"] ' ... generados por ChatGPT
+  
+  Dim I As Integer = Rnd(1000, 9999)
+  
+  'Print nombres[Rnd(0, nombres.Count)] & Str(I)
+  txUser.Text = nombres[Rnd(0, nombres.Count)] & Str(I)
+  
+End
+
+Public Sub txMail_DblClick()
+  
+  Clipboard.Copy(txMail.Text)
+  StatusBar("Copiada dirección de mail al portapapeles")
+  
+End
+
+Public Sub txUser_KeyRelease()  'Si presionamos enter en el textbox llamamos a la función como ChequearMail_Click (atajo)
+  
+  If Key.code = Key.Enter Then btnChequearMail_Click
+  
+End
+
+Public Sub Form_KeyPress() 'Función para terminar el programa presionando la tecla "ESC"
+  
+  If Key.code = Key.esc Then 
+    spRecibir.Stop
+    mailTimer.Stop
+    Quit
+  Endif
+  
+End
+
+Public Sub btnDetener_Click()
+
+  'Detenemos el spinner y el timer 
+  spRecibir.Stop 
+  spRecibir.Visible = False
+  mailTimer.Stop  
+  
+  'Actualizamos la barra de estado
+  StatusBar("Servicio detenido.")
+  
+  btnDetener.Enabled = False
+
+End
+
+Public Sub btnDescargarAttach_Click()
+ Dim path As String
+
+  'Selección de carpeta en donde se guardará el adjunto
+  Dialog.SelectDirectory
+  path = Dialog.path &/ mail.nombreAdjunto
+  
+  'Llamamos a la función para descargar el ajunto con todas las variables necesarias
+  mail.getFile(Usuario, Domain, mail_key, mail.nombreAdjunto, path) 
+
+End
+
+
+Public Sub mnSalir_Click()
+
+  'Detenemos el ssinner y el timer 
+  spRecibir.Stop 
+  spRecibir.Visible = False
+  mailTimer.Stop  
+  
+  Quit 
+  
+End
+
+Public Sub mnAbout_Click()
+
+  frmAbout.Show
+
+End
+
+Public Sub btnVerHtml_Click()
+
+  Desktop.Open(mail.resWeb, True) 'Abrimos en el navegador por defecto el archivo html temporal que creamos
+  StatusBar("Abriendo la versión HTML en navegador")
+
+End
+
+Public Sub Rep_Sound() 'Función para reproducir sonido
+Dim sonido As Sound
+
+sonido = Sound.Load("ding.wav")
+sonido.Play
+   
+  
+End
+
+
+

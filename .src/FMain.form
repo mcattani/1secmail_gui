@@ -1,0 +1,147 @@
+# Gambas Form File 3.0
+
+{ Form Form
+  MoveScaled(0,0,99,92)
+  Icon = Picture["icons/icon.png"]
+  Arrangement = Arrange.Vertical
+  { Menu1 Menu
+    Text = ("Programa")
+    { mnAbout Menu
+      Text = ("Acerca de") & "..."
+      Picture = Picture["icon:/medium/info"]
+    }
+    { Menu2 Menu
+    }
+    { mnSalir Menu
+      Text = ("Salir")
+      Picture = Picture["icon:/medium/quit"]
+    }
+  }
+  { frameDireccion Frame
+    MoveScaled(1,1,96,11)
+    AutoResize = True
+    { txUser TextBox
+      MoveScaled(1,1,23,4)
+      ToolTip = ("Ingrese aquí el usuario ")
+      Text = ("nerdy2025")
+      Alignment = Align.Center
+    }
+    { txMail Label
+      MoveScaled(1,6,42,3.1111)
+      ToolTip = ("Doble click para copiar al portapapeles")
+      Alignment = Align.Center
+      Border = Border.Plain
+    }
+    { !cmbDominios ComboBox
+      MoveScaled(31,1,20,4)
+      #Public = True
+      ToolTip = ("Lista de dominios disponibles")
+      ReadOnly = True
+    }
+    { btnChequearMail Button
+      MoveScaled(53,1,22,4)
+      ToolTip = ("Click para iniciar el servicio a la espera de nuevos mensajes")
+      Text = ("Iniciar servicio")
+      Picture = Picture["icons/btn_chk_icon.png"]
+    }
+    { mailTimer #Timer
+      #MoveScaled(22,5)
+      Delay = 3000
+    }
+    { btnRandom Button
+      MoveScaled(25,1,5,4)
+      ToolTip = ("Click para crear usuario aleatorio")
+      Picture = Picture["icons/rnd_icon.png"]
+    }
+    { spRecibir Spinner
+      MoveScaled(80,2,7,7)
+    }
+    { btnDetener Button
+      MoveScaled(53,6,22,4)
+      Enabled = False
+      ToolTip = ("Click para detener el servicio")
+      Text = ("Detener servicio")
+      Picture = Picture["icons/btn_stop_icon.png"]
+    }
+  }
+  { Splitter1 Splitter
+    MoveScaled(2,14,94,47)
+    Expand = True
+    Arrangement = Arrange.Vertical
+    { !colDatosMail ColumnView
+      MoveScaled(1,1,89,20)
+      #Public = True
+      ToolTip = ("Datos del mail")
+      Expand = True
+      Resizable = True
+    }
+    { !txMailCuerpo TextArea
+      MoveScaled(1,23,89,23)
+      #Public = True
+      ToolTip = ("Cuerpo del mail")
+      Expand = True
+      ReadOnly = True
+    }
+  }
+  { !expHtml Expander
+    MoveScaled(2,63,92,11)
+    #Public = True
+    Enabled = False
+    ToolTip = ("Click para expandir")
+    Arrangement = Arrange.Fill
+    AutoResize = True
+    Padding = 2
+    Text = ("Expandir para versión HTML")
+    Hidden = True
+    { btnVerHtml Button
+      MoveScaled(2,2,34,4)
+      AutoResize = True
+      Text = ("Abrir versión html en navegador")
+      Picture = Picture["icons/html_icon.png"]
+    }
+  }
+  { panelAttach Panel
+    MoveScaled(1,75,94,7)
+    Arrangement = Arrange.Horizontal
+    Padding = 1
+    Border = Border.Plain
+    { !pctAttach PictureBox
+      MoveScaled(1,1,5,5)
+      #Public = True
+      Visible = False
+      Picture = Picture.Load("icons/attach_ico.png")
+      Alignment = Align.Center
+    }
+    { !txAttachInfo Label
+      MoveScaled(7,2,53,3)
+      #Public = True
+      Visible = False
+      ToolTip = ("Información del archivo adjunto")
+      AutoResize = True
+    }
+    { Spring1 Spring
+      MoveScaled(61,3,3,2)
+    }
+    { !btnDescargarAttach Button
+      MoveScaled(66,1,15,5)
+      #Public = True
+      Visible = False
+      ToolTip = ("Descagar adjunto")
+      Text = ("Descargar")
+      Picture = Picture["icons/save_ico.png"]
+    }
+    { Spring2 Spring
+      MoveScaled(83,3,4,2)
+    }
+  }
+  { panelStatus Panel
+    MoveScaled(1,83,94,5)
+    ToolTip = ("Muestra información de estado")
+    { txStatusBar Label
+      MoveScaled(1,1,78,3)
+      Expand = True
+      AutoResize = True
+      BorderWidth = 1
+    }
+  }
+}

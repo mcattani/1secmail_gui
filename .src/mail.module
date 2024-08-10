@@ -1,0 +1,170 @@
+' Gambas module file
+
+Private hClient As New HttpClient
+Private sResult As String ' Variable donde guardaremos los datos obtenidos de la conexión
+Public datosMail As New Collection 'Colección para guardar los datos de los mails que llegan
+Public nombreAdjunto As String 
+Public resWeb As String 'Variable para guardar el arhivo temporal con la versión HTML (público para acceder desde FMAIN)
+
+Public Sub GetDomains() 'Función para obtener los dominios disponibles
+  
+  Dim res As String[]
+  Dim i As Integer
+  
+  With hClient
+    .URL = "https://www.1secmail.com/api/v1/?action=getDomainList"
+    .Async = False
+    .Timeout = 10   'Límite de tiempo que esperamos
+    .Get
+  End With
+  
+  If Lof(hClient) Then sResult = Read #hClient, Lof(hClient) 'Cuando toda la data es descagada la guardamos en sResult
+  
+  res = JSON.decode(sResult) 'Decodifica el string en formato JSON y guarda el resultado en la variable res
+  
+  If res.Count = 0 Then  'Si se produce un error y no podemos obtener los dominios
+    fmain.StatusBar("Error al obtener dominios, prueba reiniciar la aplicación o intentar más tarde")
+    Message.Warning("Error al obtener dominios, reinicie la aplicación o intente más tarde")
+    Return 
+  Endif
+  
+  For i = 0 To res.count - 1 'Llenamos el combobox de fmain con los dominios disponibles
+    FMain.cmbDominios.Add(res[i])
+  Next
+  
+  fmain.StatusBar("Obtenidos dominios disponibles. Preparado para recibir mails.")
+  
+  hClient.Stop
+  
+End
+
+Public Function getMails(usuario As String, dominio As String) As String 
+'Función que chequea que haya llegado un mail y lee los encabezados (no el contenido)
+'Ej. respuesta: [{"id":1493671554,"from":"test@gmail.com","subject":"prueba","date":"2024-05-03 23:22:25"}]
+  
+  Dim jsonRes As Variant
+      
+  With hClient
+    .url = "https://www.1secmail.com/api/v1/?action=getMessages&login=" & usuario & "&" & "domain=" & dominio
+    .async = False
+    .Timeout = 5
+    .Get
+  End With
+  
+  'Print "https://www.1secmail.com/api/v1/?action=getMessages&login=" & usuario & "&" & "domain=" & dominio
+  
+  If Lof(hClient) Then sResult = Read #hClient, Lof(hClient)
+  'Print sResult
+  If sResult = "[]" Then 'Si sResult devuelve [] es que no ha llegado nada
+    'Print "No tenemos email"
+    Return 
+  Else 'Guardamos los datos recibidos en la colección
+    'Print "Tenemos un email"
+    jsonRes = JSON.Decode(sResult)
+    
+    datosMail.Add(Int(jsonRes[0]["id"]), "id")
+    datosMail.Add(jsonRes[0]["from"], "from")
+    datosMail.Add(jsonRes[0]["subject"], "subject")
+    datosMail.Add(jsonRes[0]["date"], "date")
+          
+   Endif
+  
+  hClient.Stop
+  
+End
+
+Public Function getMail(usuario As String, dominio As String, id As Integer)
+'Una vez que hemos recibidos un mail, esta función obtiene el contenido
+'Ej: https://www.1secmail.com/api/v1/?action=readMessage&login=demo&domain=1secmail.com&id=639
+   
+  Dim jsonRes As Variant
+  Dim tipoAdjunto As String
+  
+ 'Print "https://www.1secmail.com/api/v1/?action=readMessage&login=" & usuario & "&" & "domain=" & dominio & "&" & "id=" & id
+  
+  With hClient
+    .url = "https://www.1secmail.com/api/v1/?action=readMessage&login=" & usuario & "&" & "domain=" & dominio & "&" & "id=" & id
+    .Async = False
+    .Timeout = 5
+    .Get
+  End With
+  
+  If Lof(hClient) Then sResult = Read #hClient, Lof(hClient)
+  
+  If sResult = "[]" Then 'Si el resultado del requiest es [] es que ha habiado algún tipo de error
+    'Print "Error al obtener cuerpo del mail"
+    fmain.expHtml.Enabled = False
+    fmain.StatusBar("Error al obtener el cuerpo del mail.")
+    Return 
+  Else 
+    'Print "Obtenido cuerpo del mail"
+    jsonRes = JSON.Decode(sResult)
+    
+    'Mostramos el cuerpo del mensaje (modo texto plano) 
+    fmain.txMailCuerpo.Text = jsonRes["textBody"]
+      
+    'Chequemos si el mail tiene archivos adjuntos    
+    If jsonRes["attachments"].count = 0 Then 'Si no hay archivo adjunto
+      'Print "Sin archivo adjunto"
+      'Ocultamos todo lo relacionado a la descarga de adjuntos
+      fmain.pctAttach.Visible = False
+      fmain.txAttachInfo.Visible = False
+      fmain.btnDescargarAttach.Visible = False
+      Else 
+        nombreAdjunto = jsonRes["attachments"][0]["filename"]
+        tipoAdjunto = jsonRes["attachments"][0]["contentType"]
+        
+        'Mostramos el ícono indicando que hay adjunto presente y mostraoms la información
+        fmain.pctAttach.Visible = True
+        fmain.txAttachInfo.Visible = True
+        fmain.btnDescargarAttach.Visible = True
+        fmain.txAttachInfo.Text = " Adjunto: " & nombreAdjunto & " / Tipo: " & tipoAdjunto
+        
+    Endif
+    
+    'Chequeamos si hay versión HTML para mostrar...
+    If Len(jsonRes["htmlBody"]) <> 0 Then 
+      resweb = Temp & ".html" 'Creamos el archivo temporal para guardar la versión HTML 
+     'Guardamos los datos recibidos en un archivo temporal
+     File.Save(resWeb, jsonRes["htmlBody"]) 'Guardamos la versión HTML en el archivo
+       fmain.expHtml.Enabled = True 'Habilitamos el panel que contiene el botón para realizar la visualización en navegador
+     Else 
+       fmain.expHtml.Enabled = False 
+       fmain.expHtml.Hidden = True
+     Endif
+    
+  Endif
+  
+  hClient.Stop 
+  
+End
+
+Public Function getFile(usuario As String, dominio As String, id As Integer, archivo As String, path As String)
+  'Función para descargar el archivo adjunto: no siempre funciona pero tras varios dolores de cabeza me di cuenta que es problema de la página
+  'Ej: https://www.1secmail.com/api/v1/?action=download&login=demo&domain=1secmail.com&id=639&file=iometer.pdf
+   
+   Dim dFile As File
+   Dim dClient As New HttpClient
+   Dim dResult As String
+         
+   'Print "https://www.1secmail.com/api/v1/?action=download&login=" & usuario & "&" & "domain=" & dominio & "&id=" & id & "&file=" & archivo
+      
+   With dClient
+   .url = "https://www.1secmail.com/api/v1/?action=download&login=" & usuario & "&" & "domain=" & dominio & "&id=" & id & "&file=" & archivo
+   .Async = False
+   .Timeout = 30
+   .Get
+  End With
+  
+  If Lof(dClient) Then dResult = Read #dClient, Lof(dClient)
+  
+  dFile = Open path For Write Create 'Creamos el archivo y lo abrimos para escritura
+  Write #dfile, dResult 'Guardamos los datos recibidos en el archivo
+  Close dfile
+
+  fmain.StatusBar(archivo & " descargado con éxito!")
+  
+  dClient.Close
+ 
+End
+
